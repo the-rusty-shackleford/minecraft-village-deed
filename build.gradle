@@ -1,0 +1,87 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.144'
+}
+version = mod_version
+group = 'com.chunkworks.villagedeed'
+base { archivesName = 'villagedeed' }
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+repositories {
+    mavenCentral()
+    // Thief, the crime system this mod is an addon to, is published on Modrinth's maven, not Central.
+    maven { url = 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
+}
+// The Modrinth version id of Thief 1.2.4 for NeoForge 1.21.1, the build the pack ships. Version
+// numbers are shared across loaders there, so the id names the jar, not "1.2.4".
+def thief = 'maven.modrinth:thief:Zhr0tVOO'
+sourceSets { domain; gametest }
+def gameTestLog = file('run/logs/latest.log')
+var resetWorld = tasks.register('resetGameTestWorld', Delete) { delete 'run/world' }
+var verification = tasks.register('prepareVerification') {
+    doLast {
+        new File('run/server.properties').with { if (!exists()) text = 'max-tick-time=0\n' }
+        new File('run/config').mkdirs()
+        new File('run/config/fml.toml').text = 'disableConfigWatcher=true\nearlyWindowControl=false\n'
+    }
+}
+var structures = tasks.register('copyGameTestStructures', Copy) {
+    from 'devtools/gameteststructures'
+    into 'run/gameteststructures'
+}
+neoForge {
+    version = '21.1.248'
+    parchment { minecraftVersion = '1.21.1'; mappingsVersion = '2024.11.17' }
+    runs {
+        client { client() }
+        server { server(); programArgument '--nogui' }
+        gameTestServer {
+            type = 'gameTestServer'
+            sourceSet = sourceSets.gametest
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'villagedeed'
+            taskBefore structures
+            taskBefore resetWorld
+            taskBefore verification
+        }
+        configureEach { logLevel = org.slf4j.event.Level.INFO }
+    }
+    mods {
+        villagedeed { sourceSet(sourceSets.domain); sourceSet(sourceSets.main) }
+        villagedeed_gametest { sourceSet(sourceSets.gametest) }
+    }
+    addModdingDependenciesTo(sourceSets.gametest)
+}
+neoForge.runs.matching { it.name != 'gameTestServer' }.configureEach {
+    loadedMods = neoForge.mods.matching { it.name != 'villagedeed_gametest' }
+}
+dependencies {
+    implementation sourceSets.domain.output
+    gametestImplementation sourceSets.main.output
+    gametestImplementation sourceSets.domain.output
+    testImplementation sourceSets.domain.output
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.9.2'
+    // Compile only: the mixin targets Thief's classes and nothing of Thief is bundled; the pack
+    // supplies it. The gametest server runs it, as the pack does.
+    compileOnly thief
+    gametestCompileOnly thief
+    gametestRuntimeOnly thief
+}
+tasks.named('test', Test) { useJUnitPlatform() }
+jar { from sourceSets.domain.output }
+def releaseVersion = version.toString()
+tasks.named('processResources') {
+    inputs.property 'version', releaseVersion
+    filesMatching('META-INF/neoforge.mods.toml') { expand version: releaseVersion }
+}
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+tasks.named('runGameTestServer') { task ->
+    doLast {
+        def log = gameTestLog.text
+        def passed = log =~ /All (\d+) required tests passed/
+        if (!passed.find() || log.contains('Mod loading has failed')) throw new GradleException('GameTests failed; see run/logs/latest.log')
+        task.logger.lifecycle('GameTests: ' + passed.group(1) + ' passed')
+    }
+}
+tasks.named('check') {
+    if (!project.hasProperty('skipGameTests')) dependsOn 'runGameTestServer'
+}

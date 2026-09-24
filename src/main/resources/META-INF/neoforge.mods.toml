@@ -1,0 +1,29 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="AGPL-3.0-or-later"
+[[mods]]
+modId="villagedeed"
+version="${version}"
+displayName="Village Deed"
+authors="Chunkworks"
+description='''Buy a village. Its buildings, stores, crops and animals are yours and your trusted friends' to use under Thief's law; its people stay protected. The price follows what the village holds.'''
+[[mixins]]
+config="villagedeed.mixins.json"
+[[dependencies.villagedeed]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.248,)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.villagedeed]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="BOTH"
+[[dependencies.villagedeed]]
+modId="thief"
+type="required"
+versionRange="[1.2,)"
+ordering="AFTER"
+side="BOTH"

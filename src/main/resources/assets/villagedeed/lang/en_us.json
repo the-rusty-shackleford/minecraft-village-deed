@@ -1,0 +1,66 @@
+{
+  "item.villagedeed.village_deed": "Village Deed",
+  "item.villagedeed.village_deed.named": "Deed to %s",
+  "item.villagedeed.village_deed.lore.location": "Recorded at %s, %s",
+  "item.villagedeed.village_deed.lore.buyer": "Bought by %s for %s emeralds",
+  "item.villagedeed.village_deed.lore.covers": "Its buildings, stores, crops and animals are yours to use.",
+  "item.villagedeed.village_deed.lore.limit": "Its people are not.",
+
+  "message.villagedeed.offer.no_village": "These villagers belong to no village the law recognises. There is nothing here to buy.",
+  "message.villagedeed.offer.owned": "%s already belongs to %s.",
+  "message.villagedeed.offer.yours": "%s is yours already. /deed trust <player> lets a friend use it as you do.",
+  "message.villagedeed.offer": "%s is not owned by anyone. The villagers would sell it for %s emeralds; you are carrying %s.",
+  "message.villagedeed.offer.button": "[ Buy %s ]",
+  "message.villagedeed.offer.hover": "Pays %s emeralds (a block of emerald counts nine) and makes the village yours. /deed appraise shows what the price counts.",
+
+  "message.villagedeed.bought.broadcast": "%s bought %s for %s emeralds. Its buildings, stores, crops and animals are theirs to use; its people are not.",
+
+  "message.villagedeed.fail.not_in_village": "You are not in a village.",
+  "message.villagedeed.fail.already_owned": "%s already belongs to %s.",
+  "message.villagedeed.fail.cannot_afford": "The deed costs %s emeralds. You are carrying %s.",
+  "message.villagedeed.fail.not_owner": "%s belongs to %s, not to you.",
+  "message.villagedeed.fail.not_claimed": "Nobody owns %s.",
+  "message.villagedeed.fail.trust_self": "That is the owner already.",
+
+  "message.villagedeed.here.none": "No village here.",
+  "message.villagedeed.here.unclaimed": "%s: unowned. The villagers would sell it for %s emeralds.",
+  "message.villagedeed.here.claimed": "%s: owned by %s.",
+  "message.villagedeed.here.trusted": "Trusted here: %s",
+  "message.villagedeed.here.trusted.nobody": "nobody yet",
+
+  "message.villagedeed.appraise.header": "%s is appraised at %s emeralds:",
+  "message.villagedeed.appraise.base": "  any village: +%s",
+  "message.villagedeed.appraise.line": "  %s: %s, +%s",
+  "message.villagedeed.appraise.owned": "(%s paid %s emeralds for it.)",
+
+  "message.villagedeed.list.empty": "No villages have been bought.",
+  "message.villagedeed.list.header": "Villages bought (%s):",
+  "message.villagedeed.list.entry": "  %s at %s, %s: owned by %s, %s trusted",
+
+  "message.villagedeed.trusted": "%s may now use %s as you do.",
+  "message.villagedeed.distrusted": "%s is a stranger in %s again.",
+  "message.villagedeed.transferred": "%s now belongs to %s.",
+  "message.villagedeed.transferred.to_you": "%s handed you %s.",
+  "message.villagedeed.revoked": "The deed to %s has been torn up.",
+
+  "villagedeed.category.homes": "homes",
+  "villagedeed.category.people": "people",
+  "villagedeed.category.trades": "trade levels",
+  "villagedeed.category.workstations": "workstations",
+  "villagedeed.category.bells": "bells",
+  "villagedeed.category.guards": "guards",
+  "villagedeed.category.land": "land (chunks)",
+  "villagedeed.category.storage": "storage",
+  "villagedeed.category.crafting": "crafting",
+  "villagedeed.category.valuables": "valuables",
+  "villagedeed.category.loot": "loot",
+
+  "villagedeed.configuration.price": "Prices",
+  "villagedeed.configuration.floor": "Floor (emeralds)",
+  "villagedeed.configuration.ceiling": "Ceiling (emeralds)",
+  "villagedeed.configuration.multiplier": "Multiplier",
+  "villagedeed.configuration.deed": "Deeds",
+  "villagedeed.configuration.everyone_is_immune": "Everyone May Use Bought Villages",
+  "villagedeed.configuration.clear_negative_gossip": "Clear Negative Gossip On Purchase",
+  "villagedeed.configuration.confirm_window_seconds": "Purchase Prompt Timeout"
+}
