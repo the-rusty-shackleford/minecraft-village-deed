@@ -1,7 +1,9 @@
 # Village Deed
 
 Version 2.0.0, built and released 2026-09-24 (pack 1.61.0). Minecraft 1.21.1, NeoForge 21.1.248,
-Version 2.0.1 (2026-09-24 evening): claims bought on nfx's 1.0.0 carry over (D-0003).
+Version 2.0.1 (2026-09-24 evening): claims bought on nfx's 1.0.0 carry over (D-0003). Released
+as tag v2.0.1 and deployed as pack 1.62.2 at 20:51 UTC on Rusty's "Go, 2 min warning"; `deed
+list` from the console then showed all five carried-over claims surveyed to their structures.
 
 Java 21, a Thief 1.2.x addon. Chunkworks, AGPL-3.0-or-later; grown from nfx's 1.0.0 (MIT, folded in with
 his blessing, D-0001). Public at github.com/the-rusty-shackleford/minecraft-village-deed.
