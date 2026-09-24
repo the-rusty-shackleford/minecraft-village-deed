@@ -13,6 +13,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.ItemStack;
@@ -32,7 +34,8 @@ import java.util.Map;
  * counter, and equals the domain's answer for that census; a purchase takes emeralds first and
  * blocks of emerald for the rest with change back, records the claim, refuses a second buyer,
  * transfers and revokes; a villager standing in the fields outside the hut still offers it and
- * the offer can be bought from there. */
+ * the offer can be bought from there; a claims file from nfx's 1.0.0 carries its purchases over
+ * (D-0003). */
 @GameTestHolder("villagedeed") @PrefixGameTestTemplate(false)
 public final class VillageDeedGameTests {
     private static final int SETTLE = 5;
@@ -47,6 +50,46 @@ public final class VillageDeedGameTests {
         h.getLevel().setBlock(foot.north(), state.setValue(BedBlock.PART, BedPart.HEAD), 3);
     }
 
+    /** D-0003: a claims file written by nfx's 1.0.0 (Buyer, BuyerName, VillageId as the start
+     * chunk's long, VillageName, BoughtAt) reads as the buyer's claim on the same village 2.0.0
+     * identifies, at 1.0.0's flat price; a survey centres it on the structure; it saves in 2.0.0's
+     * layout and reads back; an entry with no buyer is skipped. */
+    @GameTest(template = "arena", timeoutTicks = 200) public void claimsBoughtOnOneZeroZeroCarryOver(GameTestHelper h) {
+        var hut = Huts.plant(h);
+        Huts.build(h, hut);
+        var level = h.getLevel();
+        var buyer = java.util.UUID.randomUUID();
+        var entry = new CompoundTag();
+        entry.putLong("BoughtAt", 3369767L);
+        entry.putString("BuyerName", "Jdrum12");
+        entry.putUUID("Buyer", buyer);
+        entry.putLong("VillageId", hut.start().getChunkPos().toLong());
+        entry.putString("VillageName", "Taiga Village");
+        var stale = new CompoundTag();
+        stale.putLong("VillageId", 123L);
+        var list = new ListTag();
+        list.add(entry);
+        list.add(stale);
+        var root = new CompoundTag();
+        root.put("Claims", list);
+        var claims = Claims.load(root, level.registryAccess());
+        var village = VillageProviders.at(level, hut.centre()).orElseThrow();
+        var claim = claims.get(village.id());
+        h.assertTrue(claim != null, "the 1.0.0 purchase is a claim on the hut's id " + village.id() + ": " + claims.all());
+        h.assertTrue(claim.deed().owner().equals(buyer) && claim.ownerName().equals("Jdrum12") && claim.pricePaid() == Claims.LEGACY_PRICE && claim.boughtAt() == 3369767L,
+                "the buyer, their name, 1.0.0's flat price and the purchase tick carried over: " + claim);
+        h.assertTrue(claims.all().size() == 1, "an entry without a buyer is skipped: " + claims.all());
+        h.assertTrue(claim.centre().getY() == 0 && claim.name().equals("Taiga Village"), "unsurveyed: the start chunk's middle at y 0 and the stored name: " + claim);
+        h.assertTrue(claims.isDirty(), "carried-over claims are marked for saving");
+        claims.survey(level);
+        claim = claims.get(village.id());
+        h.assertTrue(claim.centre().equals(village.centre()) && claim.name().equals(village.name()), "surveyed: the structure's centre " + village.centre() + " and name, got " + claim);
+        var again = Claims.load(claims.save(new CompoundTag(), level.registryAccess()), level.registryAccess());
+        var round = again.get(village.id());
+        h.assertTrue(round != null && round.deed().owner().equals(buyer) && round.centre().equals(village.centre()) && round.pricePaid() == Claims.LEGACY_PRICE, "saved in 2.0.0's layout and read back: " + again.all());
+        h.assertTrue(!again.isDirty(), "a 2.0.0 file carries nothing over");
+        h.succeed();
+    }
     @GameTest(template = "arena", timeoutTicks = 200) public void theftInAnUnboughtVillageIsACrime(GameTestHelper h) {
         var hut = Huts.plant(h);
         Huts.build(h, hut);

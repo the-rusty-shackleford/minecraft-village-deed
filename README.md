@@ -134,6 +134,10 @@ name, and claims are keyed on them. Decision D-0002 in `knowledge/` has the spec
 - The server log records every purchase ("<player> bought <village> (<id>) at <x, y, z> for N
   emeralds"), trust change, transfer and revocation with the village's id, so a dispute has a
   paper trail. Claims live in `data/villagedeed_claims.dat` of each dimension.
+- A village bought on 1.0.0 that nobody owns: the file still holds it in 1.0.0's layout, and
+  2.0.1 reads that ("N claims from Village Deed 1.0.0 carried over" in the log at first use, then
+  one line per claim as its structure is surveyed). 2.0.0 skipped it; nothing was lost as long
+  as no 2.0.0 purchase or trust change rewrote the file first.
 - Prices look wrong: `/deed appraise` shows every line; the tariff is `Tariff.STANDARD` in the
   domain layer, the bounds and multiplier are config.
 
@@ -151,10 +155,13 @@ the fields still offers the hut. `./gradlew build` produces `build/libs/villaged
 
 ## Status
 
+**2.0.1**: villages bought on 1.0.0 are their buyers' again. 2.0.0 read past 1.0.0's claims in
+silence, so every earlier purchase vanished: no atlas marker, no exemption. They come back at
+1.0.0's flat 45 emeralds, centred on their structure once the server has looked at it.
 **2.0.0**: Chunkworks; the owner and the players they trust are exempt, not the whole server;
 prices follow the village (15 to 150); honest messages; Terralith's fortified villages bought and
 policed; every failed offer explains itself; emerald blocks with change; transfer; appraisal.
 **1.0.0** (nfx): flat 45 emeralds, server-wide immunity. Download from
 [GitHub Releases](https://github.com/the-rusty-shackleford/minecraft-village-deed/releases).
-Verified: 19 JUnit tests and 5 real-server GameTests; see
+Verified: 19 JUnit tests and 6 real-server GameTests; see
 [release verification](devtools/verification/).

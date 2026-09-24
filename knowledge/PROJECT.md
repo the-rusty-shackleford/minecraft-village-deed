@@ -1,6 +1,8 @@
 # Village Deed
 
 Version 2.0.0, built and released 2026-09-24 (pack 1.61.0). Minecraft 1.21.1, NeoForge 21.1.248,
+Version 2.0.1 (2026-09-24 evening): claims bought on nfx's 1.0.0 carry over (D-0003).
+
 Java 21, a Thief 1.2.x addon. Chunkworks, AGPL-3.0-or-later; grown from nfx's 1.0.0 (MIT, folded in with
 his blessing, D-0001). Public at github.com/the-rusty-shackleford/minecraft-village-deed.
 
@@ -61,7 +63,12 @@ Rusty's "Release it"**: tag v2.0.0, GitHub release (asset sha1 `46c6ba18…`), a
 `modhub drop-file mods/villagedeed-1.0.0.jar` (nfx's jar was an override from the adopted base
 pack, both sides) then `add-file mods/villagedeed-2.0.0.jar`, `set-version 1.61.0`, `assemble`
 at 17:17:59 UTC; the deployment is recorded in the server repo's
-`knowledge/releases/pack-1.61.0.md`. Nobody had bought a village on 1.0.0, so no claim migrated.
+`knowledge/releases/pack-1.61.0.md`. That record said nobody had bought a village on 1.0.0, so no
+claim migrated: **false, and never checked**. The box's `villagedeed_claims.dat` held five 1.0.0
+purchases (three of Rusty's), which 2.0.0's loader skipped in silence; from 17:17 to the 2.0.1
+fix the same evening nobody owned their village, the atlas showed none and Thief policed the
+owners (D-0003). 2.0.1 reads both layouts and surveys the carried-over claims' centres on first
+use. Before believing a data statement, read the file on the box.
 Not yet seen live: the first thing to ask Rusty is their first purchase (sneak-use a villager in a
 Terralith fortified village and in a CTOV village, read the appraisal, buy, open a chest, trust a
 friend).
