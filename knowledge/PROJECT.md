@@ -1,7 +1,7 @@
 # Village Deed
 
-Version 2.0.0, built 2026-09-24, unreleased. Minecraft 1.21.1, NeoForge 21.1.248, Java 21, a
-Thief 1.2.x addon. Chunkworks, AGPL-3.0-or-later; grown from nfx's 1.0.0 (MIT, folded in with
+Version 2.0.0, built and released 2026-09-24 (pack 1.61.0). Minecraft 1.21.1, NeoForge 21.1.248,
+Java 21, a Thief 1.2.x addon. Chunkworks, AGPL-3.0-or-later; grown from nfx's 1.0.0 (MIT, folded in with
 his blessing, D-0001). Public at github.com/the-rusty-shackleford/minecraft-village-deed.
 
 Rusty on 2026-09-24: fold nfx's mod into the store under Chunkworks, make every village
@@ -55,11 +55,13 @@ emeralds; Terralith's fortified villages in, "the Rob Miller way" (a protocol, D
 
 ## Status
 
-Built 2026-09-24; JUnit and GameTests green (see
-[release verification](../devtools/verification/release-2.0.0.md)). **Not released**: Rusty's go
-is the release. Then: tag v2.0.0, GitHub release, and on the box `modhub drop-file
-mods/villagedeed-1.0.0.jar` (an override jar from the adopted base pack, both sides) followed by
-`add-file mods/villagedeed-2.0.0.jar <release url>`, `set-version`, `assemble`, restart when
-empty. Nobody has bought a village on the box, so no claim migrates. First live check: Rusty
-sneak-uses a villager in a Terralith fortified village and in a CTOV village, reads the
-appraisal, buys one, opens a chest, trusts a friend.
+Built 2026-09-24, JUnit and GameTests green (see
+[release verification](../devtools/verification/release-2.0.0.md)), **released the same day on
+Rusty's "Release it"**: tag v2.0.0, GitHub release (asset sha1 `46c6ba18…`), and on the box
+`modhub drop-file mods/villagedeed-1.0.0.jar` (nfx's jar was an override from the adopted base
+pack, both sides) then `add-file mods/villagedeed-2.0.0.jar`, `set-version 1.61.0`, `assemble`
+at 17:17:59 UTC; the deployment is recorded in the server repo's
+`knowledge/releases/pack-1.61.0.md`. Nobody had bought a village on 1.0.0, so no claim migrated.
+Not yet seen live: the first thing to ask Rusty is their first purchase (sneak-use a villager in a
+Terralith fortified village and in a CTOV village, read the appraisal, buy, open a chest, trust a
+friend).

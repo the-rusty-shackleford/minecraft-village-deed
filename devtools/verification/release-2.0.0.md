@@ -1,8 +1,9 @@
 # Release verification — 2.0.0
 
 2026-09-24. Village Deed folded into the store as a Chunkworks mod (D-0001) with the village
-protocol (D-0002). Built on Rusty's approval of the plan; **not yet released: Rusty's go is the
-release.**
+protocol (D-0002). Built on Rusty's approval of the plan and **released the same day on their
+"Release it"** as pack 1.61.0 (the server repo's `knowledge/releases/pack-1.61.0.md` has the
+deployment).
 
 - `./gradlew test`: 19 JUnit tests over the domain (deed roster and transfer; census invariants
   and builder; appraisal per counter, per category, rounding, bounds, multiplier; payment in
