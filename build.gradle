@@ -15,18 +15,37 @@ repositories {
 // numbers are shared across loaders there, so the id names the jar, not "1.2.4".
 def thief = 'maven.modrinth:thief:Zhr0tVOO'
 sourceSets { domain; gametest }
+def verificationDirectories = [file('run/config'), file('run/booth/config')]
+def boothDirectory = file('run/booth')
 def gameTestLog = file('run/logs/latest.log')
+def boothLog = file('run/booth/logs/latest.log')
 var resetWorld = tasks.register('resetGameTestWorld', Delete) { delete 'run/world' }
 var verification = tasks.register('prepareVerification') {
     doLast {
         new File('run/server.properties').with { if (!exists()) text = 'max-tick-time=0\n' }
-        new File('run/config').mkdirs()
-        new File('run/config/fml.toml').text = 'disableConfigWatcher=true\nearlyWindowControl=false\n'
+        verificationDirectories.each { config ->
+            config.mkdirs()
+            new File(config, 'fml.toml').text = 'disableConfigWatcher=true\nearlyWindowControl=false\n'
+        }
     }
 }
 var structures = tasks.register('copyGameTestStructures', Copy) {
     from 'devtools/gameteststructures'
     into 'run/gameteststructures'
+}
+def boothShots = file('run/booth/screenshots')
+var boothWorld = tasks.register('prepareBoothWorld', Sync) {
+    // The booth plays a copy of the GameTest world, silent, and saves into the copy.
+    outputs.upToDateWhen { false }
+    doFirst { boothShots.deleteDir() }
+    from 'run/world'
+    into 'run/booth/saves/booth'
+    exclude 'session.lock'
+    doLast {
+        def directory = boothDirectory
+        directory.mkdirs()
+        new File(directory, 'options.txt').text = 'onboardAccessibility:false\nnarrator:0\nsoundCategory_master:0.0\npauseOnLostFocus:false\nrenderDistance:4\nsimulationDistance:5\nmaxFps:60\nguiScale:2\ntutorialStep:none\n'
+    }
 }
 neoForge {
     version = '21.1.248'
@@ -42,6 +61,15 @@ neoForge {
             taskBefore resetWorld
             taskBefore verification
         }
+        photoBooth {
+            client()
+            sourceSet = sourceSets.gametest
+            gameDirectory = file('run/booth')
+            systemProperty 'villagedeed.booth', 'true'
+            programArguments.addAll('--quickPlaySingleplayer', 'booth', '--width', '1280', '--height', '720')
+            taskBefore boothWorld
+            taskBefore verification
+        }
         configureEach { logLevel = org.slf4j.event.Level.INFO }
     }
     mods {
@@ -50,7 +78,7 @@ neoForge {
     }
     addModdingDependenciesTo(sourceSets.gametest)
 }
-neoForge.runs.matching { it.name != 'gameTestServer' }.configureEach {
+neoForge.runs.matching { !(it.name in ['gameTestServer', 'photoBooth']) }.configureEach {
     loadedMods = neoForge.mods.matching { it.name != 'villagedeed_gametest' }
 }
 dependencies {
@@ -82,6 +110,15 @@ tasks.named('runGameTestServer') { task ->
         task.logger.lifecycle('GameTests: ' + passed.group(1) + ' passed')
     }
 }
+tasks.named('runPhotoBooth') {
+    mustRunAfter 'runGameTestServer'
+    doLast {
+        def log = boothLog.text
+        if (!log.contains('villagedeed booth: COMPLETE') || log.contains('villagedeed booth: FAIL')) throw new GradleException('Village Deed booth failed; see run/booth/logs/latest.log')
+    }
+}
+tasks.named('prepareBoothWorld') { mustRunAfter 'runGameTestServer' }
 tasks.named('check') {
     if (!project.hasProperty('skipGameTests')) dependsOn 'runGameTestServer'
+    if (!project.hasProperty('skipBooth')) dependsOn 'runPhotoBooth'
 }

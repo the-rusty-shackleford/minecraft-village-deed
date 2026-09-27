@@ -43,13 +43,16 @@ public final class Huts {
     /** effects: generates the hut in a chunk that lies whole inside the test's arena and records
      * its start and its references in the chunks it covers, as the chunk generator would, so the
      * structure manager (and through it Thief) finds it; asserts the box lies inside the arena. */
-    public static Hut plant(GameTestHelper h) {
+    public static Hut plant(GameTestHelper h) { return plant(h, 0); }
+    /** effects: as {@link #plant(GameTestHelper)}, in the chunk {@code dx} chunks east of the
+     * arena's middle one, so a test can hold two villages. */
+    public static Hut plant(GameTestHelper h, int dx) {
         var level = h.getLevel();
         var bounds = h.getBounds();
         int minCx = (int) Math.ceil(bounds.minX / 16.0), maxCx = (int) Math.floor((bounds.maxX + 1) / 16.0) - 1;
         int minCz = (int) Math.ceil(bounds.minZ / 16.0), maxCz = (int) Math.floor((bounds.maxZ + 1) / 16.0) - 1;
         h.assertTrue(minCx + 1 <= maxCx - 1 && minCz + 1 <= maxCz - 1, "the arena holds a chunk with whole chunks around it: " + bounds);
-        int cx = (minCx + maxCx) / 2, cz = (minCz + maxCz) / 2;
+        int cx = (minCx + maxCx) / 2 + dx, cz = (minCz + maxCz) / 2;
         var structure = level.registryAccess().registryOrThrow(Registries.STRUCTURE).getOrThrow(HUT);
         var generator = level.getChunkSource().getGenerator();
         var start = structure.generate(level.registryAccess(), generator, generator.getBiomeSource(), level.getChunkSource().randomState(),
@@ -102,9 +105,11 @@ public final class Huts {
      * holding what is given, joined to the server over an embedded connection the way the
      * framework's own mock joins. Not the framework's mock: that one reports itself creative,
      * and Thief's witnesses look away from creative players. */
-    public static ServerPlayer player(GameTestHelper h, BlockPos at, ItemStack... holding) {
+    public static ServerPlayer player(GameTestHelper h, BlockPos at, ItemStack... holding) { return player(h, at, "test-mock-player", holding); }
+    /** effects: as {@link #player(GameTestHelper, BlockPos, ItemStack...)}, under that name. */
+    public static ServerPlayer player(GameTestHelper h, BlockPos at, String name, ItemStack... holding) {
         var server = h.getLevel().getServer();
-        var cookie = CommonListenerCookie.createInitial(new GameProfile(UUID.randomUUID(), "test-mock-player"), false);
+        var cookie = CommonListenerCookie.createInitial(new GameProfile(UUID.randomUUID(), name), false);
         var player = new ServerPlayer(server, h.getLevel(), cookie.gameProfile(), cookie.clientInformation()) {
             @Override public boolean isSpectator() { return false; }
         };

@@ -13,14 +13,20 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
-/** {@code /deed}: buy, here, appraise, list, trust, distrust, transfer, and revoke for operators. */
+/** {@code /deed}: on its own, the trust screen; then buy, here, appraise, list, trust, distrust,
+ * transfer, and revoke for operators. Everything but revoke is open to every player: a player's
+ * trust list and villages are their own business (D-0004). */
 public final class DeedCommand {
     private DeedCommand() {}
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("deed")
+                .executes(DeedCommand::open)
                 .then(Commands.literal("buy").executes(DeedCommand::buy))
                 .then(Commands.literal("here").executes(DeedCommand::here))
                 .then(Commands.literal("appraise").executes(DeedCommand::appraise))
@@ -31,6 +37,11 @@ public final class DeedCommand {
                 .then(Commands.literal("revoke").requires(source -> source.hasPermission(2)).executes(DeedCommand::revoke)));
     }
 
+    /** effects: opens the player's trust screen. */
+    private static int open(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        TrustList.open(context.getSource().getPlayerOrException());
+        return 1;
+    }
     private static int buy(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         var player = context.getSource().getPlayerOrException();
         var outcome = DeedPurchase.buy(player);
@@ -60,10 +71,17 @@ public final class DeedCommand {
         }
         reply(context, Component.translatable("message.villagedeed.here.claimed", v.name(), claim.ownerName()).withStyle(ChatFormatting.GREEN));
         if (claim.deed().owner().equals(player.getUUID())) {
-            var names = claim.trustedNames();
+            var names = trustedNames(player);
             reply(context, Component.translatable("message.villagedeed.here.trusted", names.isEmpty() ? Component.translatable("message.villagedeed.here.trusted.nobody") : Component.literal(String.join(", ", names))).withStyle(ChatFormatting.GRAY));
         }
         return 2;
+    }
+    /** effects: the names of the players on the player's roster, sorted. */
+    private static List<String> trustedNames(ServerPlayer player) {
+        var names = new ArrayList<String>();
+        for (var row : TrustList.listing(player, false).rows()) if (row.trusted()) names.add(row.name());
+        Collections.sort(names, String.CASE_INSENSITIVE_ORDER);
+        return names;
     }
     /** effects: the appraisal of the village the player is in or beside, line by line. */
     private static int appraise(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
@@ -85,24 +103,20 @@ public final class DeedCommand {
         var claims = Claims.get(context.getSource().getLevel());
         if (claims.all().isEmpty()) { reply(context, Component.translatable("message.villagedeed.list.empty").withStyle(ChatFormatting.GRAY)); return 0; }
         reply(context, Component.translatable("message.villagedeed.list.header", claims.all().size()).withStyle(ChatFormatting.GOLD));
+        var rosters = Rosters.get(context.getSource().getServer());
         for (var claim : claims.all()) reply(context, Component.translatable("message.villagedeed.list.entry",
-                claim.name(), claim.centre().getX(), claim.centre().getZ(), claim.ownerName(), claim.deed().trusted().size()).withStyle(ChatFormatting.GRAY));
+                claim.name(), claim.centre().getX(), claim.centre().getZ(), claim.ownerName(), rosters.of(claim.deed().owner()).trusted().size()).withStyle(ChatFormatting.GRAY));
         return claims.all().size();
     }
-    /** effects: puts the named player on or off the roster of the village the owner stands in. */
+    /** effects: puts the named player on or off the player's roster, which covers every village
+     * they hold (D-0004); run from anywhere. */
     private static int trust(CommandContext<CommandSourceStack> context, boolean trusted) throws CommandSyntaxException {
         var player = context.getSource().getPlayerOrException();
-        var owned = ownedVillage(context, player);
-        if (owned.isEmpty()) return 0;
-        var v = owned.get();
-        var claims = Claims.get(player.serverLevel());
-        var claim = claims.get(v.id());
         var target = target(context);
-        if (target.getId().equals(claim.deed().owner())) { fail(context, Component.translatable("message.villagedeed.fail.trust_self")); return 0; }
-        var deed = trusted ? claim.deed().trusting(target.getId()) : claim.deed().distrusting(target.getId());
-        claims.put(claim.with(deed, target.getId(), target.getName()));
-        VillageDeed.LOGGER.info("{} {} {} at {} ({})", player.getScoreboardName(), trusted ? "trusted" : "distrusted", target.getName(), v.name(), v.id());
-        reply(context, Component.translatable(trusted ? "message.villagedeed.trusted" : "message.villagedeed.distrusted", target.getName(), v.name()).withStyle(ChatFormatting.GREEN));
+        if (target.getId().equals(player.getUUID())) { fail(context, Component.translatable("message.villagedeed.fail.trust_self")); return 0; }
+        Rosters.get(player.server).set(player.getUUID(), target.getId(), target.getName(), trusted);
+        VillageDeed.LOGGER.info("{} {} {} in all their villages", player.getScoreboardName(), trusted ? "trusted" : "distrusted", target.getName());
+        reply(context, Component.translatable(trusted ? "message.villagedeed.trusted" : "message.villagedeed.distrusted", target.getName()).withStyle(ChatFormatting.GREEN));
         return 1;
     }
     /** effects: hands the village the owner stands in to the named player. */

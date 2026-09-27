@@ -1,5 +1,21 @@
 # Village Deed
 
+**2.1.0, built, verified and committed 2026-09-27, NOT released** (waits on Rusty's go; to ship
+in one pack with the Warehouse Manager fix Rusty asked to fold into the same release): one
+trusted list per player for all their villages, on a screen opened by using a deed or by the bare
+`/deed`, open to every player, not only operators ([D-0004](decisions/D-0004.md)). Clean build
+green: 25 JUnit (RosterTest's partitions, the screen's row order), 9 GameTests (one click
+exempts a friend in two huts and another player's clicks cannot touch the list; 2.0.x's
+per-village lists fold into the owner's; a player who is no operator may run `/deed`) and the
+new booth (15 checks, 4 photos judged by eye: `/deed` opens it, a mouse click ticks a row,
+`/deed trust WAXER_01` by name through the profile cache, the deed opens it through the client's
+use-item path, the wheel scrolls). Jar `villagedeed-2.1.0.jar`, sha1 `2a4802a3…`, 94254 bytes.
+The mod now has client code and a required network channel ("1"), so every client updates with
+the pack. On the box, all six claims' per-village lists were empty (read 2026-09-27), so the fold
+moves nobody there. Not seen live: Rusty's first use of the screen, and OtatopMalloy on it.
+Trusting by name is not run in the GameTests: the GameTest server has no profile cache (the
+booth covers it).
+
 Version 2.0.0, built and released 2026-09-24 (pack 1.61.0). Minecraft 1.21.1, NeoForge 21.1.248,
 Version 2.0.1 (2026-09-24 evening): claims bought on nfx's 1.0.0 carry over (D-0003). Released
 as tag v2.0.1 and deployed as pack 1.62.2 at 20:51 UTC on Rusty's "Go, 2 min warning"; `deed
@@ -37,7 +53,12 @@ emeralds; Terralith's fortified villages in, "the Rob Miller way" (a protocol, D
   structure over an 8x5x8 air template, tagged into both tags), `Huts` (generates and registers
   the hut as worldgen would, since `/place structure` registers nothing; survival mock players,
   because Thief's witnesses look away from creative ones and the framework's mock is creative),
-  `Crimes` (records Thief's `CrimeCommitedEvent`), five GameTests. No booth: no client UI.
+  `Crimes` (records Thief's `CrimeCommitedEvent`), the GameTests, and `DeedBooth` (2.1.0), the
+  silent client that drives and photographs the trust screen (`runPhotoBooth`; beside a live
+  client through `tools/booth/run_iconified.sh`).
+- 2.1.0 adds `domain.Roster` (one list per owner, the screen's row order), `Rosters` (overworld
+  saved data `villagedeed_rosters`), `TrustList` (the payloads and the server side), `DeedItem`
+  (use opens the list) and `client.TrustScreen` / `client.ClientSetup`; `Deed` keeps only the owner.
 
 ## Gotchas met
 

@@ -8,13 +8,12 @@ import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
-/** The deed item: a receipt. The claim lives in the world's saved data, so losing, burning or
- * giving away the deed changes nothing; it exists so a purchase leaves something on the
- * mantelpiece, stamped with the village, the price and who paid it. */
+/** The deed item ({@link DeedItem}): a receipt stamped with the village, the price and who paid
+ * it, which also opens its holder's trust list when used. */
 public final class ModItems {
     private ModItems() {}
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(VillageDeed.ID);
-    public static final DeferredItem<Item> VILLAGE_DEED = ITEMS.register("village_deed", () -> new Item(new Item.Properties().stacksTo(1).rarity(Rarity.UNCOMMON)));
+    public static final DeferredItem<DeedItem> VILLAGE_DEED = ITEMS.register("village_deed", () -> new DeedItem(new Item.Properties().stacksTo(1).rarity(Rarity.UNCOMMON)));
     static void onBuildCreativeTabs(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) event.accept(VILLAGE_DEED);
     }

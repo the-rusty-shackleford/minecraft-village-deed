@@ -15,13 +15,15 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Village Deed: buy a village and its law bends for you and the players you trust. A Thief
  * addon: the whole effect is one mixin on Thief's crime choke point ({@code CrimeMixin}), and
- * everything else is the shop front: the offer, the appraisal, the purchase, the claims and the
- * {@code /deed} command. Villages come through the {@link VillageProviders village protocol}. */
+ * everything else is the shop front: the offer, the appraisal, the purchase, the claims, each
+ * owner's one trust list with its screen, and the {@code /deed} command. Villages come through
+ * the {@link VillageProviders village protocol}. */
 @Mod(VillageDeed.ID)
 public final class VillageDeed {
     public static final String ID = "villagedeed";
@@ -39,6 +41,14 @@ public final class VillageDeed {
         NeoForge.EVENT_BUS.addListener((RegisterCommandsEvent e) -> DeedCommand.register(e.getDispatcher()));
         NeoForge.EVENT_BUS.addListener(VillageDeed::onEntityInteract);
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedOutEvent e) -> DeedPurchase.forget(e.getEntity().getUUID()));
+        bus.addListener((RegisterPayloadHandlersEvent e) -> {
+            // Required, not optional: a client without the trust screen is refused at login with
+            // the mod mismatch rather than let in (D-0004). Bump the version with any change to
+            // what either side sends.
+            var registrar = e.registrar("1");
+            registrar.playToClient(TrustList.Listing.TYPE, TrustList.Listing.CODEC, (p, ctx) -> TrustList.Client.accept(p));
+            registrar.playToServer(TrustList.Toggle.TYPE, TrustList.Toggle.CODEC, (p, ctx) -> { if (ctx.player() instanceof ServerPlayer player) TrustList.toggle(player, p); });
+        });
     }
 
     /** effects: sneak-use on an adult villager offers its village for sale. The event is not

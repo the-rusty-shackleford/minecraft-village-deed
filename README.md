@@ -43,11 +43,18 @@ the mod is the shop front.
 
 ## Owner and trusted
 
-Whoever buys a village owns it. `/deed trust <player>` lets a friend use it as you do,
-`/deed distrust <player>` takes that back, and `/deed transfer <player>` hands the village over
-(the roster stays, the old owner is a stranger from then on). Ownership is per village: buy two
-and trust different people in each. The server switch `everyone_is_immune` (off) restores the
-1.0.0 rule where a bought village bends for every player.
+Whoever buys a village owns it. Each player has **one trusted list covering every village they
+own**, now and later: a village bought tomorrow is covered at once (D-0004). Open it by using
+(right-clicking) any village deed, or with `/deed` on its own, from anywhere: every player this
+world has seen, online players first and in green, the ones you trust ticked, with the count in
+the title. A click trusts or untrusts. Using any deed opens *your* list, whichever village the deed
+names. `/deed trust <player>` and `/deed distrust <player>` edit the same list by name.
+
+`/deed transfer <player>` hands the village you stand in to that player: it falls under *their*
+list from then on, and the old owner is a stranger to it. The server switch `everyone_is_immune`
+(off) restores the 1.0.0 rule where a bought village bends for every player.
+
+None of this needs an operator; only `/deed revoke` does.
 
 ## What a village costs
 
@@ -102,12 +109,13 @@ name, and claims are keyed on them. Decision D-0002 in `knowledge/` has the spec
 
 | Command | |
 |---|---|
+| `/deed` | Your trusted list, on screen (so does using a deed) |
 | `/deed buy` | Complete a purchase (what the chat prompt runs) |
-| `/deed here` | Which village you are in or beside, its owner or its price, and whom you trust there |
+| `/deed here` | Which village you are in or beside, its owner or its price, and, when it is yours, whom you trust |
 | `/deed appraise` | The price line by line |
-| `/deed list` | Every village bought in this dimension, with owner and roster size |
-| `/deed trust <player>`, `/deed distrust <player>` | Owner only; offline players by name work |
-| `/deed transfer <player>` | Owner only |
+| `/deed list` | Every village bought in this dimension, with its owner and the size of the owner's list |
+| `/deed trust <player>`, `/deed distrust <player>` | Your list, from anywhere; offline players by name work |
+| `/deed transfer <player>` | The village you stand in, when it is yours |
 | `/deed revoke` | Tear up the deed for the village you are in (operators) |
 
 ## Config
@@ -129,11 +137,17 @@ name, and claims are keyed on them. Decision D-0002 in `knowledge/` has the spec
   blocks of that villager. `/deed here` says the same; Thief's `/thief is_in_protected_structure`
   agrees for the spot you stand on.
 - Bought a village but a chest still says "you have been seen": you are not the owner or on the
-  roster (`/deed here` lists it), or the chest is outside the structure's bounding box (Thief
-  would not flag it there either).
+  owner's list (`/deed here` names the owner; the owner's `/deed` shows the list), or the chest
+  is outside the structure's bounding box (Thief would not flag it there either).
 - The server log records every purchase ("<player> bought <village> (<id>) at <x, y, z> for N
-  emeralds"), trust change, transfer and revocation with the village's id, so a dispute has a
-  paper trail. Claims live in `data/villagedeed_claims.dat` of each dimension.
+  emeralds"), trust change ("<owner> trusted <player> in all their villages"), transfer and
+  revocation, so a dispute has a paper trail. Claims live in `data/villagedeed_claims.dat` of each
+  dimension; the trusted lists in the overworld's `data/villagedeed_rosters.dat`, one per owner.
+- Upgrading from 2.0.x, whose lists were per village: the first use of the claims puts everyone
+  on any of an owner's villages' lists on that owner's one list ("N trusted players from
+  per-village lists put on M owners' rosters"), so nobody loses access they had anywhere.
+- A player joining without 2.1.0 is refused at login with the mod mismatch (the screen's network
+  channel, version "1", is required); they update the pack.
 - A village bought on 1.0.0 that nobody owns: the file still holds it in 1.0.0's layout, and
   2.0.1 reads that ("N claims from Village Deed 1.0.0 carried over" in the log at first use, then
   one line per claim as its structure is surveyed). 2.0.0 skipped it; nothing was lost as long
@@ -145,16 +159,25 @@ name, and claims are keyed on them. Decision D-0002 in `knowledge/` has the spec
 
 Java 21. Thief comes from the Modrinth maven (`maven.modrinth:thief:Zhr0tVOO`, the NeoForge
 1.2.4 build the pack ships), compile-only for the mod and on the classpath of the gametest server.
-`./gradlew test` runs the JDK-only domain tests (deed roster, census, tariff and appraisal,
-payment, village names, offers). `./gradlew runGameTestServer` runs the real-server GameTests
-with Thief loaded: the gametest datapack defines a jigsaw structure of its own, tags it as a
-village and as Thief-protected, generates and registers it as worldgen would, and in it a theft
-is punished, an owner and a trusted player are exempt while a stranger is not, the appraisal
-follows what the hut holds, a purchase takes emeralds then blocks with change, and a villager in
-the fields still offers the hut. `./gradlew build` produces `build/libs/villagedeed-<version>.jar`.
+`./gradlew test` runs the JDK-only domain tests (deed, roster and the screen's row order, census,
+tariff and appraisal, payment, village names, offers). `./gradlew runGameTestServer` runs the
+real-server GameTests with Thief loaded: the gametest datapack defines a jigsaw structure of its
+own, tags it as a village and as Thief-protected, generates and registers it as worldgen would,
+and in it a theft is punished, an owner and a trusted player are exempt while a stranger is not,
+one click on the list exempts a friend in two huts and another player's clicks cannot touch it,
+2.0.x's per-village lists fold into the owner's, a player who is no operator may run `/deed`, the
+appraisal follows what the hut holds, a purchase takes emeralds then blocks with change, and a
+villager in the fields still offers the hut. `./gradlew runPhotoBooth` is a silent client that
+opens the list by `/deed` and by using a deed, clicks, trusts by name and scrolls, and saves
+photos to `run/booth/screenshots/`; run it beside a live client through
+`tools/booth/run_iconified.sh`. `./gradlew build` runs all three (`-PskipBooth` leaves the booth
+out) and produces `build/libs/villagedeed-<version>.jar`.
 
 ## Status
 
+**2.1.0**: one trusted list per player for all their villages, on a screen opened by using a deed
+or by `/deed`, open to every player; the 2.0.x per-village lists are folded in. The mod now has
+client code and a required network channel, so every player updates.
 **2.0.1**: villages bought on 1.0.0 are their buyers' again. 2.0.0 read past 1.0.0's claims in
 silence, so every earlier purchase vanished: no atlas marker, no exemption. They come back at
 1.0.0's flat 45 emeralds, centred on their structure once the server has looked at it.
@@ -163,5 +186,5 @@ prices follow the village (15 to 150); honest messages; Terralith's fortified vi
 policed; every failed offer explains itself; emerald blocks with change; transfer; appraisal.
 **1.0.0** (nfx): flat 45 emeralds, server-wide immunity. Download from
 [GitHub Releases](https://github.com/the-rusty-shackleford/minecraft-village-deed/releases).
-Verified: 19 JUnit tests and 6 real-server GameTests; see
+Verified: 25 JUnit tests, 9 real-server GameTests and the booth; see
 [release verification](devtools/verification/).

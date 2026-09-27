@@ -15,12 +15,17 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.saveddata.SavedData;
 import java.util.*;
 
-/** The villages that have been bought, per dimension, in the level's saved data.
- * <p>AF: {@code claims} maps a village's id to its claim: the deed, the names last seen for the
- * players on it, where and for how much it was bought. RI: a claim's id is its key. */
+/** The villages that have been bought, per dimension, in the level's saved data. Whom an owner
+ * trusts is not here but in {@link Rosters}, one list per owner (D-0004).
+ * <p>AF: {@code claims} maps a village's id to its claim: the deed, the owner's last-known name,
+ * where and for how much it was bought. {@code legacyTrusted} holds the per-village lists a
+ * 2.0.x file carried, by owner, until {@link #foldTrusted} moves them onto the owners' rosters.
+ * RI: a claim's id is its key; no list in {@code legacyTrusted} is empty. */
 public final class Claims extends SavedData {
-    /** One bought village. Immutable. {@code names} holds the last-known name of the owner and of
-     * every trusted player, since names change. */
+    /** One bought village. Immutable. {@code names} holds the owner's last-known name, since names
+     * change (and, from 2.0.x, may hold names of players once trusted here, which nothing reads).
+     * The components are Magical Map's contract: its bridge and tests build and read claims by
+     * reflection, so they do not change. */
     public record Claim(VillageId id, String name, Deed deed, Map<UUID, String> names, BlockPos centre, int pricePaid, long boughtAt) {
         public Claim { names = Map.copyOf(names); }
         public String ownerName() { return names.getOrDefault(deed.owner(), "?"); }
@@ -30,13 +35,6 @@ public final class Claims extends SavedData {
             n.put(who, whoseName);
             return new Claim(id, name, newDeed, n, centre, pricePaid, boughtAt);
         }
-        /** effects: the trusted players' names, in no particular order. */
-        public List<String> trustedNames() {
-            var out = new ArrayList<String>();
-            for (var id : deed.trusted()) out.add(names.getOrDefault(id, id.toString().substring(0, 8)));
-            Collections.sort(out);
-            return out;
-        }
     }
     private static final SavedData.Factory<Claims> FACTORY = new SavedData.Factory<>(Claims::new, Claims::load);
     /** What nfx's 1.0.0 charged for every village; the price a claim carried over from it records. */
@@ -45,12 +43,36 @@ public final class Claims extends SavedData {
     /** Claims carried over from 1.0.0 whose centre is still the start chunk's middle at y 0,
      * until {@link #survey} finds their structure. */
     private final Set<VillageId> unsurveyed = new HashSet<>();
+    private final Map<UUID, Map<UUID, String>> legacyTrusted = new HashMap<>();
     private Claims() {}
-    /** effects: the dimension's claims, every claim carried over from 1.0.0 surveyed first. */
+    /** effects: the dimension's claims, every claim carried over from 1.0.0 surveyed and every
+     * per-village list from 2.0.x folded into its owner's roster first. */
     public static Claims get(ServerLevel level) {
         var claims = level.getDataStorage().computeIfAbsent(FACTORY, VillageDeed.ID + "_claims");
         claims.survey(level);
+        if (!claims.legacyTrusted.isEmpty()) claims.foldTrusted(Rosters.get(level.getServer()));
         return claims;
+    }
+    /** effects: puts every player a 2.0.x file trusted in one of an owner's villages on that
+     * owner's roster, so they are trusted in all of them (D-0004), and forgets the per-village
+     * lists; returns how many players were put on a roster. */
+    public int foldTrusted(Rosters rosters) {
+        int moved = 0;
+        for (var owner : legacyTrusted.entrySet())
+            for (var who : owner.getValue().entrySet())
+                if (rosters.set(owner.getKey(), who.getKey(), who.getValue(), true)) moved++;
+        if (!legacyTrusted.isEmpty()) {
+            VillageDeed.LOGGER.info("{} trusted players from per-village lists put on {} owners' rosters", moved, legacyTrusted.size());
+            legacyTrusted.clear();
+            setDirty();
+        }
+        return moved;
+    }
+    /** effects: the claims {@code owner} holds in this dimension. */
+    public List<Claim> ownedBy(UUID owner) {
+        var out = new ArrayList<Claim>();
+        for (var claim : claims.values()) if (claim.deed().owner().equals(owner)) out.add(claim);
+        return out;
     }
 
     /** effects: the claims the tag holds, in 2.0.0's layout ({@code Owner}, {@code Id}, …) and in
@@ -59,7 +81,8 @@ public final class Claims extends SavedData {
      * silence (D-0003). A 1.0.0 claim is its buyer's, on {@code structure:<chunk>}, the identity
      * 2.0.0 gives the same village, at 1.0.0's flat price, centred on the start chunk until
      * surveyed; anything carried over marks the data dirty so the next save writes 2.0.0's
-     * layout. Public so a test can read a layout; the game reads through the factory. */
+     * layout. A 2.0.x claim's {@code Trusted} list is held for {@link #foldTrusted} (D-0004).
+     * Public so a test can read a layout; the game reads through the factory. */
     public static Claims load(CompoundTag tag, HolderLookup.Provider registries) {
         var data = new Claims();
         var list = tag.getList("Claims", Tag.TAG_COMPOUND);
@@ -69,18 +92,14 @@ public final class Claims extends SavedData {
             if (c.hasUUID("Owner") && c.contains("Id")) {
                 VillageId id;
                 try { id = VillageId.parse(c.getString("Id")); } catch (IllegalArgumentException e) { continue; }
-                var names = new HashMap<UUID, String>();
                 var owner = c.getUUID("Owner");
-                names.put(owner, c.getString("OwnerName"));
-                var deed = Deed.of(owner);
                 var trusted = c.getList("Trusted", Tag.TAG_COMPOUND);
                 for (int j = 0; j < trusted.size(); j++) {
                     var t = trusted.getCompound(j);
                     if (!t.hasUUID("Id") || t.getUUID("Id").equals(owner)) continue;
-                    deed = deed.trusting(t.getUUID("Id"));
-                    names.put(t.getUUID("Id"), t.getString("Name"));
+                    data.legacyTrusted.computeIfAbsent(owner, o -> new HashMap<>()).put(t.getUUID("Id"), t.getString("Name"));
                 }
-                var claim = new Claim(id, c.getString("Name"), deed, names, BlockPos.of(c.getLong("Centre")), c.getInt("Price"), c.getLong("BoughtAt"));
+                var claim = new Claim(id, c.getString("Name"), Deed.of(owner), Map.of(owner, c.getString("OwnerName")), BlockPos.of(c.getLong("Centre")), c.getInt("Price"), c.getLong("BoughtAt"));
                 data.claims.put(id, claim);
             } else if (c.hasUUID("Buyer") && c.contains("VillageId", Tag.TAG_LONG)) {
                 long packed = c.getLong("VillageId");
@@ -125,14 +144,19 @@ public final class Claims extends SavedData {
             c.putString("Name", claim.name());
             c.putUUID("Owner", claim.deed().owner());
             c.putString("OwnerName", claim.ownerName());
-            var trusted = new ListTag();
-            for (var id : claim.deed().trusted()) {
-                var t = new CompoundTag();
-                t.putUUID("Id", id);
-                t.putString("Name", claim.names().getOrDefault(id, ""));
-                trusted.add(t);
+            // A per-village list survives only until it is folded onto the owner's roster, so a
+            // save before the fold loses nothing.
+            var legacy = legacyTrusted.getOrDefault(claim.deed().owner(), Map.of());
+            if (!legacy.isEmpty()) {
+                var trusted = new ListTag();
+                for (var e : legacy.entrySet()) {
+                    var t = new CompoundTag();
+                    t.putUUID("Id", e.getKey());
+                    t.putString("Name", e.getValue());
+                    trusted.add(t);
+                }
+                c.put("Trusted", trusted);
             }
-            c.put("Trusted", trusted);
             c.putLong("Centre", claim.centre().asLong());
             c.putInt("Price", claim.pricePaid());
             c.putLong("BoughtAt", claim.boughtAt());

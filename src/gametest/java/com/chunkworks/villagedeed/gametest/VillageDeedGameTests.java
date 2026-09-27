@@ -4,17 +4,22 @@ package com.chunkworks.villagedeed.gametest;
 import com.chunkworks.villagedeed.Claims;
 import com.chunkworks.villagedeed.DeedPurchase;
 import com.chunkworks.villagedeed.ModItems;
+import com.chunkworks.villagedeed.Rosters;
 import com.chunkworks.villagedeed.Surveyor;
+import com.chunkworks.villagedeed.TrustList;
 import com.chunkworks.villagedeed.api.VillageProviders;
 import com.chunkworks.villagedeed.domain.Appraisal;
 import com.chunkworks.villagedeed.domain.Payment;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.mortuusars.thief.world.Crime;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.ItemStack;
@@ -26,6 +31,8 @@ import net.minecraft.world.level.block.state.properties.BedPart;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 /** Real-server partitions, with Thief loaded and the hut registered as a protected village: a
  * theft in an unbought village is punished with the villager as witness; once bought, the owner
@@ -118,8 +125,7 @@ public final class VillageDeedGameTests {
             var level = h.getLevel();
             var outcome = DeedPurchase.buy(owner);
             h.assertTrue(outcome.result() == DeedPurchase.Result.BOUGHT, "the owner buys the hut: " + outcome);
-            var village = VillageProviders.at(level, hut.centre()).orElseThrow();
-            var claims = Claims.get(level);
+            var rosters = Rosters.get(level.getServer());
             Crimes.clear();
             h.assertTrue(owner.gameMode.destroyBlock(chests[0]), "the owner breaks a chest");
             h.assertTrue(Crimes.by(owner.getUUID()).isEmpty(), "the owner's theft is no crime");
@@ -128,12 +134,10 @@ public final class VillageDeedGameTests {
             h.assertTrue(Crimes.by(owner.getUUID()).isEmpty(), "the owner's livestock is theirs to butcher");
             h.assertTrue(stranger.gameMode.destroyBlock(chests[1]), "the stranger breaks a chest");
             h.assertTrue(Crimes.by(stranger.getUUID()).size() == 1, "the stranger's theft is a crime, got " + Crimes.by(stranger.getUUID()));
-            var claim = claims.get(village.id());
-            claims.put(claim.with(claim.deed().trusting(stranger.getUUID()), stranger.getUUID(), "stranger"));
+            rosters.set(owner.getUUID(), stranger.getUUID(), "stranger", true);
             h.assertTrue(stranger.gameMode.destroyBlock(chests[2]), "the trusted player breaks a chest");
             h.assertTrue(Crimes.by(stranger.getUUID()).size() == 1, "trusted, the same player's theft is no crime");
-            claim = claims.get(village.id());
-            claims.put(claim.with(claim.deed().distrusting(stranger.getUUID()), stranger.getUUID(), "stranger"));
+            rosters.set(owner.getUUID(), stranger.getUUID(), "stranger", false);
             h.assertTrue(stranger.gameMode.destroyBlock(chests[3]), "the distrusted player breaks a chest");
             h.assertTrue(Crimes.by(stranger.getUUID()).size() == 2, "trust withdrawn, the theft is a crime again");
             h.succeed();
@@ -222,6 +226,122 @@ public final class VillageDeedGameTests {
             var outcome = DeedPurchase.buy(buyer);
             h.assertTrue(outcome.result() == DeedPurchase.Result.BOUGHT && outcome.villageName().equals(village.name()), "bought from the field on the standing offer: " + outcome);
             h.assertTrue(Claims.get(level).get(village.id()) != null, "the hut is claimed");
+            h.succeed();
+        });
+    }
+    /** D-0004: one list covers every village its owner holds. Two huts bought by one owner; a
+     * stranger's theft in the east hut is a crime; one click on the trust screen (the toggle the
+     * screen sends, applied as the server applies it) exempts them in both huts; another player's
+     * clicks change only that player's own list; the owner cannot put themselves or a player this
+     * world has never seen on theirs; the owner's second click makes theft a crime again in both.
+     * The listing the owner's screen shows counts both villages and ticks the friend. */
+    @GameTest(template = "arena", timeoutTicks = 200) public void oneListCoversEveryVillageItsOwnerHolds(GameTestHelper h) {
+        var west = Huts.plant(h);
+        Huts.build(h, west);
+        var east = Huts.plant(h, 1);
+        Huts.build(h, east);
+        var westChests = new BlockPos[] { west.at(2, 1, 2), west.at(2, 1, 4) };
+        var eastChests = new BlockPos[] { east.at(2, 1, 2), east.at(2, 1, 4), east.at(2, 1, 6) };
+        for (var c : westChests) chest(h, c);
+        for (var c : eastChests) chest(h, c);
+        Huts.villager(h, west.at(5, 1, 5), VillagerProfession.NONE, 1);
+        Huts.villager(h, east.at(5, 1, 5), VillagerProfession.NONE, 1);
+        var owner = Huts.player(h, west.at(3, 1, 3), "Owner", new ItemStack(Items.EMERALD, 64), new ItemStack(Items.EMERALD, 64), new ItemStack(Items.EMERALD, 64), new ItemStack(Items.EMERALD, 64));
+        var friend = Huts.player(h, east.at(3, 1, 3), "Friend");
+        var meddler = Huts.player(h, west.at(4, 1, 5), "Meddler");
+        h.runAfterDelay(SETTLE, () -> {
+            var rosters = Rosters.get(h.getLevel().getServer());
+            h.assertTrue(DeedPurchase.buy(owner).result() == DeedPurchase.Result.BOUGHT, "the owner buys the west hut");
+            var inEast = east.at(4, 1, 4);
+            owner.moveTo(inEast.getX() + 0.5, inEast.getY(), inEast.getZ() + 0.5);
+            h.assertTrue(DeedPurchase.buy(owner).result() == DeedPurchase.Result.BOUGHT, "and the east hut");
+            Crimes.clear();
+            h.assertTrue(friend.gameMode.destroyBlock(eastChests[0]), "the stranger breaks a chest in the east hut");
+            h.assertTrue(Crimes.by(friend.getUUID()).size() == 1, "a stranger's theft is a crime, got " + Crimes.by(friend.getUUID()));
+            TrustList.toggle(owner, new TrustList.Toggle(friend.getUUID(), true));
+            var listing = TrustList.listing(owner, false);
+            h.assertTrue(listing.villages() == 2, "the screen covers both villages: " + listing);
+            h.assertTrue(listing.rows().stream().anyMatch(r -> r.id().equals(friend.getUUID()) && r.trusted() && r.online() && r.name().equals("Friend")), "the friend is ticked, online, by name: " + listing);
+            h.assertTrue(listing.rows().stream().noneMatch(r -> r.id().equals(owner.getUUID())), "the owner is no row on their own list: " + listing);
+            h.assertTrue(friend.gameMode.destroyBlock(eastChests[1]), "the friend breaks a chest in the east hut");
+            h.assertTrue(friend.gameMode.destroyBlock(westChests[0]), "and one in the west hut");
+            h.assertTrue(Crimes.by(friend.getUUID()).size() == 1, "one click, no crime in either hut: " + Crimes.by(friend.getUUID()));
+            TrustList.toggle(meddler, new TrustList.Toggle(friend.getUUID(), false));
+            TrustList.toggle(meddler, new TrustList.Toggle(owner.getUUID(), true));
+            h.assertTrue(rosters.of(owner.getUUID()).trusted().equals(Set.of(friend.getUUID())), "another player's clicks leave the owner's list alone: " + rosters.of(owner.getUUID()));
+            h.assertTrue(rosters.of(meddler.getUUID()).trusted().equals(Set.of(owner.getUUID())), "they change the clicker's own list: " + rosters.of(meddler.getUUID()));
+            TrustList.toggle(owner, new TrustList.Toggle(owner.getUUID(), true));
+            TrustList.toggle(owner, new TrustList.Toggle(UUID.randomUUID(), true));
+            h.assertTrue(rosters.of(owner.getUUID()).trusted().equals(Set.of(friend.getUUID())), "neither the owner nor a player never seen goes on the list: " + rosters.of(owner.getUUID()));
+            TrustList.toggle(owner, new TrustList.Toggle(friend.getUUID(), false));
+            h.assertTrue(friend.gameMode.destroyBlock(eastChests[2]), "the distrusted player breaks a chest in the east hut");
+            h.assertTrue(friend.gameMode.destroyBlock(westChests[1]), "and one in the west hut");
+            h.assertTrue(Crimes.by(friend.getUUID()).size() == 3, "trust withdrawn, a crime again in both: " + Crimes.by(friend.getUUID()));
+            h.succeed();
+        });
+    }
+    /** D-0004: a claims file from 2.0.x, whose lists were per village, loses nobody. Until the
+     * fold a save keeps the lists; the fold puts one owner's two villages' lists on that owner's
+     * one roster with their names, another owner's list on theirs, and skips an entry naming the
+     * owner; after it the claims save without lists, a second fold moves nobody, and the rosters
+     * save and read back. */
+    @GameTest(template = "arena", timeoutTicks = 100) public void perVillageListsFromTwoZeroBecomeTheOwnersList(GameTestHelper h) {
+        var registries = h.getLevel().registryAccess();
+        UUID owner = new UUID(1, 1), other = new UUID(2, 2), waxer = new UUID(3, 3), otatop = new UUID(4, 4);
+        var list = new ListTag();
+        list.add(twoZeroClaim("structure:101", owner, "Jdrum12", Map.of(waxer, "WAXER_01")));
+        list.add(twoZeroClaim("structure:102", owner, "Jdrum12", Map.of(otatop, "OtatopMalloy", owner, "Jdrum12")));
+        list.add(twoZeroClaim("structure:103", other, "Bobandy_", Map.of(waxer, "WAXER_01")));
+        var root = new CompoundTag();
+        root.put("Claims", list);
+        var claims = Claims.load(root, registries);
+        h.assertTrue(claims.all().size() == 3, "three claims read: " + claims.all());
+        var kept = Claims.load(claims.save(new CompoundTag(), registries), registries);
+        var rosters = Rosters.load(new CompoundTag(), registries);
+        int moved = kept.foldTrusted(rosters);
+        h.assertTrue(moved == 3, "a save before the fold kept every name; three put on rosters, got " + moved);
+        h.assertTrue(rosters.of(owner).trusted().equals(Set.of(waxer, otatop)), "one owner's two lists are one roster: " + rosters.of(owner));
+        h.assertTrue(rosters.of(other).trusted().equals(Set.of(waxer)), "another owner's list is theirs: " + rosters.of(other));
+        h.assertTrue("WAXER_01".equals(rosters.nameOf(waxer)) && "OtatopMalloy".equals(rosters.nameOf(otatop)), "the names came along");
+        h.assertTrue(kept.isDirty(), "the fold marks the claims for saving");
+        var saved = kept.save(new CompoundTag(), registries).getList("Claims", Tag.TAG_COMPOUND);
+        h.assertTrue(saved.size() == 3 && saved.stream().noneMatch(t -> ((CompoundTag) t).contains("Trusted")), "the claims save without per-village lists: " + saved);
+        h.assertTrue(kept.foldTrusted(rosters) == 0, "a second fold moves nobody");
+        var again = Rosters.load(rosters.save(new CompoundTag(), registries), registries);
+        h.assertTrue(again.of(owner).trusted().equals(Set.of(waxer, otatop)) && again.of(other).trusted().equals(Set.of(waxer)) && "OtatopMalloy".equals(again.nameOf(otatop)),
+                "the rosters save and read back: " + again.of(owner) + " " + again.of(other));
+        h.succeed();
+    }
+    private static CompoundTag twoZeroClaim(String id, UUID owner, String ownerName, Map<UUID, String> trusted) {
+        var c = new CompoundTag();
+        c.putString("Id", id); c.putString("Name", "Village"); c.putUUID("Owner", owner); c.putString("OwnerName", ownerName);
+        var list = new ListTag();
+        for (var e : trusted.entrySet()) { var t = new CompoundTag(); t.putUUID("Id", e.getKey()); t.putString("Name", e.getValue()); list.add(t); }
+        c.put("Trusted", list);
+        c.putLong("Centre", 0L); c.putInt("Price", 45); c.putLong("BoughtAt", 0L);
+        return c;
+    }
+    /** D-0004: {@code /deed} is every player's, not only operators': for a player with no operator
+     * level the bare command, trust and distrust are open and run, and only revoke is closed.
+     * Trusting by name is not run here: the GameTest server has no profile cache, which the
+     * player-name argument reads (the list it edits is the toggle's, tested above). */
+    @GameTest(template = "arena", timeoutTicks = 100) public void aPlayerWhoIsNoOperatorMayRunDeed(GameTestHelper h) {
+        var keeper = Huts.player(h, h.absolutePos(new BlockPos(2, 2, 2)), "Keeper");
+        h.runAfterDelay(SETTLE, () -> {
+            var server = h.getLevel().getServer();
+            var source = keeper.createCommandSourceStack();
+            h.assertFalse(source.hasPermission(2), "the player is no operator");
+            var dispatcher = server.getCommands().getDispatcher();
+            var deed = dispatcher.getRoot().getChild("deed");
+            h.assertTrue(deed != null && deed.canUse(source), "the player may run /deed");
+            for (var open : new String[] { "trust", "distrust", "here", "list", "buy", "appraise", "transfer" })
+                h.assertTrue(deed.getChild(open).canUse(source), "the player may run /deed " + open);
+            h.assertFalse(deed.getChild("revoke").canUse(source), "revoke stays the operators'");
+            try {
+                h.assertTrue(dispatcher.execute("deed", source) == 1, "the bare command runs");
+            } catch (CommandSyntaxException e) {
+                throw new GameTestAssertException("the bare /deed failed: " + e.getMessage());
+            }
             h.succeed();
         });
     }
