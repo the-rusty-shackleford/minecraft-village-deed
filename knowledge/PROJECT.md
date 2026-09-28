@@ -95,3 +95,12 @@ use. Before believing a data statement, read the file on the box.
 Not yet seen live: the first thing to ask Rusty is their first purchase (sneak-use a villager in a
 Terralith fortified village and in a CTOV village, read the appraisal, buy, open a chest, trust a
 friend).
+
+## Published and deployed — 2026-09-28, pack 1.67.0
+
+Version 2.1.0 is [published](https://github.com/the-rusty-shackleford/minecraft-village-deed/releases/tag/v2.1.0)
+(asset SHA-1 `2a4802a3c80618fc02a64b7da55a4ab22d60bfcc`, matching the clean-built jar) and deployed through Mod Hub in pack
+**1.67.0**, replacing 2.0.1, on Rusty's "release with everything else after a 5 minute server
+warning": restart 01:13:36 UTC at the end of the warning with nobody on, `Done` at 01:13:52,
+"(2.0.1 -> 2.1.0)" in the log, 36 baseline errors, 20 TPS, parity clean. The server repo's
+`knowledge/releases/pack-1.67.0.md` has the deployment. Not yet seen in play by Rusty.
