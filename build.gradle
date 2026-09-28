@@ -7,6 +7,7 @@ group = 'com.chunkworks.villagedeed'
 base { archivesName = 'villagedeed' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 repositories {
+    mavenLocal { content { includeGroup 'com.chunkworks.carried' } }
     mavenCentral()
     // Thief, the crime system this mod is an addon to, is published on Modrinth's maven, not Central.
     maven { url = 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
@@ -81,7 +82,19 @@ neoForge {
 neoForge.runs.matching { !(it.name in ['gameTestServer', 'photoBooth']) }.configureEach {
     loadedMods = neoForge.mods.matching { it.name != 'villagedeed_gametest' }
 }
+// The gametest run's classpath gets main's dependencies (Carried among them) as well as its classes.
+configurations { gametestImplementation.extendsFrom implementation }
 dependencies {
+    // Carried (D-0006): a purchase counts and takes what the player carries, their bags included.
+    // Nested, as every consumer nests it; `./gradlew publishToMavenLocal` in minecraft-carried first.
+    jarJar(implementation('com.chunkworks.carried:carried')) {
+        version {
+            strictly '[1.0,2.0)'
+            prefer '1.0.0'
+        }
+    }
+    // Backpacks+ on the gametest server only, so a purchase is proven against real bags; never bundled.
+    gametestRuntimeOnly files('../minecraft-backpacks-plus/build/libs/backpacksplus-0.6.0.jar')
     implementation sourceSets.domain.output
     gametestImplementation sourceSets.main.output
     gametestImplementation sourceSets.domain.output

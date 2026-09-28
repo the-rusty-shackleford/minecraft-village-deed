@@ -1,6 +1,7 @@
 /* Copyright (C) 2026 Chunkworks. SPDX-License-Identifier: AGPL-3.0-or-later */
 package com.chunkworks.villagedeed;
 
+import com.chunkworks.carried.api.Carried;
 import com.chunkworks.villagedeed.api.Village;
 import com.chunkworks.villagedeed.api.VillageId;
 import com.chunkworks.villagedeed.api.VillageProviders;
@@ -88,8 +89,9 @@ public final class DeedPurchase {
 
     /** effects: buys the village the player stands in, or the one they were offered when they
      * stand between its pieces, at the offered price while the offer lives and at today's
-     * appraisal otherwise: takes emeralds then blocks of emerald, returns the change, records
-     * the claim in the player's name, forgives the residents' grudges and hands over the deed. */
+     * appraisal otherwise: takes emeralds then blocks of emerald from everything the player
+     * carries, their bags included (D-0006), gives the change back where a give goes, records the
+     * claim in the player's name, forgives the residents' grudges and hands over the deed. */
     public static Outcome buy(ServerPlayer player) {
         var level = player.serverLevel();
         var offer = liveOffer(player, level);
@@ -104,14 +106,19 @@ public final class DeedPurchase {
         int emeralds = count(player, Items.EMERALD), blocks = count(player, Items.EMERALD_BLOCK);
         var plan = Payment.plan(price, emeralds, blocks);
         if (plan.isEmpty()) return new Outcome(Result.CANNOT_AFFORD, v.name(), "", price, Payment.worth(emeralds, blocks));
-        take(player, Items.EMERALD, plan.get().emeralds());
-        take(player, Items.EMERALD_BLOCK, plan.get().blocks());
-        if (plan.get().change() > 0) player.getInventory().placeItemBackInInventory(new ItemStack(Items.EMERALD, plan.get().change()));
+        // Two takes, each all or nothing; the counts were read in this call, so both succeed, and
+        // should the second not, the first is handed back rather than charged.
+        if (!take(player, Items.EMERALD, plan.get().emeralds())) return new Outcome(Result.CANNOT_AFFORD, v.name(), "", price, Payment.worth(emeralds, blocks));
+        if (!take(player, Items.EMERALD_BLOCK, plan.get().blocks())) {
+            Carried.giveOrDrop(player, new ItemStack(Items.EMERALD, plan.get().emeralds()));
+            return new Outcome(Result.CANNOT_AFFORD, v.name(), "", price, Payment.worth(emeralds, blocks));
+        }
+        if (plan.get().change() > 0) Carried.giveOrDrop(player, new ItemStack(Items.EMERALD, plan.get().change()));
         var claim = new Claims.Claim(v.id(), v.name(), Deed.of(player.getUUID()), Map.of(player.getUUID(), player.getScoreboardName()), v.centre(), price, level.getGameTime());
         claims.claim(claim);
         OFFERS.remove(player.getUUID());
         if (DeedConfig.CLEAR_NEGATIVE_GOSSIP.get()) clearNegativeGossip(level, v);
-        player.getInventory().placeItemBackInInventory(makeDeed(claim));
+        Carried.giveOrDrop(player, makeDeed(claim));
         level.playSound(null, player.blockPosition(), SoundEvents.VILLAGER_YES, SoundSource.NEUTRAL, 1.0F, 1.0F);
         level.playSound(null, player.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.6F, 1.4F);
         VillageDeed.LOGGER.info("{} bought {} ({}) at {} for {} emeralds", player.getScoreboardName(), v.name(), v.id(), v.centre().toShortString(), price);
@@ -124,24 +131,13 @@ public final class DeedPurchase {
         OFFERS.remove(player.getUUID());
         return null;
     }
-    /** effects: what the player carries in emeralds and blocks of emerald, as emeralds. */
+    /** effects: what the player carries in emeralds and blocks of emerald, as emeralds: the
+     * inventory, the offhand and their bags (Carried, D-0006). */
     public static int carrying(ServerPlayer player) { return Payment.worth(count(player, Items.EMERALD), count(player, Items.EMERALD_BLOCK)); }
-    static int count(ServerPlayer player, Item item) {
-        int total = 0;
-        for (var stack : player.getInventory().items) if (stack.is(item)) total += stack.getCount();
-        return total;
-    }
-    private static void take(ServerPlayer player, Item item, int amount) {
-        int remaining = amount;
-        for (var stack : player.getInventory().items) {
-            if (remaining <= 0) break;
-            if (!stack.is(item)) continue;
-            int taken = Math.min(remaining, stack.getCount());
-            stack.shrink(taken);
-            remaining -= taken;
-        }
-        player.getInventory().setChanged();
-    }
+    static int count(ServerPlayer player, Item item) { return Carried.count(player, item); }
+    /** effects: takes exactly {@code amount} of the item from what the player carries, the
+     * inventory before the bags, and returns true; or takes nothing and returns false. */
+    private static boolean take(ServerPlayer player, Item item, int amount) { return Carried.take(player, s -> s.is(item), amount, s -> {}); }
     /** effects: wipes every grudge the village holds, about everyone: the deed forgives the
      * village as a whole, so a friend the owner trusts is not locked out of trades over old ones. */
     private static void clearNegativeGossip(ServerLevel level, Village village) {

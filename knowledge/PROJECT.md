@@ -1,5 +1,13 @@
 # Village Deed
 
+**2.2.0, built and verified 2026-09-28, unreleased**: a purchase counts and takes everything the
+player carries, their Backpacks+ bags and the offhand included, through the Carried protocol, and
+gives the change and the deed where the inventory would put them with the bags in it
+([D-0006](decisions/D-0006.md)). Rusty's case is the first test: a village bought with emeralds
+only in a worn bag. 12 GameTests (Backpacks+ 0.6.0 and Carried loaded), all green; the two new
+purchase tests failed on 2.1.1. Ships with Carried 1.0.0 and Backpacks+ 0.6.0 as one pack on
+Rusty's go. Not seen in play.
+
 **2.1.0, built, verified and committed 2026-09-27, released 2026-09-28 in pack 1.67.0** (below): one
 trusted list per player for all their villages, on a screen opened by using a deed or by the bare
 `/deed`, open to every player, not only operators ([D-0004](decisions/D-0004.md)). Clean build
