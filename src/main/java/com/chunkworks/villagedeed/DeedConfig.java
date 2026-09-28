@@ -14,7 +14,7 @@ public final class DeedConfig {
         var builder = new ModConfigSpec.Builder();
         builder.push("price");
         FLOOR = builder.comment("The least a village costs, in emeralds; a bare hamlet.", "Default: 15").defineInRange("floor", 15, 1, 100000);
-        CEILING = builder.comment("The most a village costs, in emeralds, however rich; read as the floor when set below it.", "Default: 150").defineInRange("ceiling", 150, 1, 100000);
+        CEILING = builder.comment("The most a village costs, in emeralds, however rich; read as the floor when set below it.", "Default: 100").defineInRange("ceiling", 100, 1, 100000);
         MULTIPLIER = builder.comment("Scales every appraisal before the floor and ceiling apply. 2.0 doubles prices.", "Default: 1.0").defineInRange("multiplier", 1.0, 0.01, 100.0);
         builder.pop();
         builder.push("deed");

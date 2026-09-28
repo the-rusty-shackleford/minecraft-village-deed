@@ -1,7 +1,6 @@
 # Village Deed
 
-**2.1.0, built, verified and committed 2026-09-27, NOT released** (waits on Rusty's go; to ship
-in one pack with the Warehouse Manager fix Rusty asked to fold into the same release): one
+**2.1.0, built, verified and committed 2026-09-27, released 2026-09-28 in pack 1.67.0** (below): one
 trusted list per player for all their villages, on a screen opened by using a deed or by the bare
 `/deed`, open to every player, not only operators ([D-0004](decisions/D-0004.md)). Clean build
 green: 25 JUnit (RosterTest's partitions, the screen's row order), 9 GameTests (one click
@@ -104,3 +103,13 @@ Version 2.1.0 is [published](https://github.com/the-rusty-shackleford/minecraft-
 warning": restart 01:13:36 UTC at the end of the warning with nobody on, `Done` at 01:13:52,
 "(2.0.1 -> 2.1.0)" in the log, 36 baseline errors, 20 TPS, parity clean. The server repo's
 `knowledge/releases/pack-1.67.0.md` has the deployment. Not yet seen in play by Rusty.
+
+## 2.1.1 — prices from 15 to 100 (2026-09-28, local)
+
+Rusty: 150 is too much, the best village should cost at most 100 and a basic one 15, and nearly
+every village cost 150. [D-0005](decisions/D-0005.md) surveyed all 599 generated villages on the
+box: 574 were at the ceiling, with a median raw of 295. Each point of D-0001's weights is now an
+eighth of an emerald, and the ceiling is 100. The median village costs 50 and only the two
+richest reach 100. The server's own `config/villagedeed-server.toml`, written by 2.0.0 with
+`ceiling = 150`, is edited to 100 on release. The pack's stale 1.0.0 override of it is dropped.
+Clean build: 27 JUnit tests and 9 GameTests. Publication waits on Rusty's go.

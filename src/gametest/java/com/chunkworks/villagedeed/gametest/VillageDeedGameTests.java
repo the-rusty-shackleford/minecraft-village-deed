@@ -175,7 +175,7 @@ public final class VillageDeedGameTests {
             h.assertTrue(census.items().equals(Map.of("minecraft:diamond", 5, "minecraft:emerald", 2)), "the loot that is priced: " + census.items());
             var appraisal = DeedPurchase.appraise(level, village);
             h.assertTrue(appraisal.equals(Appraisal.of(census, tariff)), "the adapter appraises what the domain appraises");
-            h.assertTrue(appraisal.price() == 55, "2 + 6 + 6 + 4 + 3 + 0.5 + 3 + 10 + 6 on a base of 15 rounds to 55, got " + appraisal);
+            h.assertTrue(appraisal.price() == 20, "2 + 6 + 6 + 4 + 3 + 0.5 + 3 + 10 + 6 points, 5.06 emeralds at an eighth, on a base of 15 rounds to 20, got " + appraisal);
             h.succeed();
         });
     }

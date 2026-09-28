@@ -32,10 +32,29 @@ public record Tariff(int base, int floor, int ceiling, double multiplier,
     public Tariff withPrices(int floor, int ceiling, double multiplier) {
         return new Tariff(base, floor, ceiling, multiplier, perBed, perVillager, perTradeLevel, perJobSite, perBell, perGolem, perFootprint, blocks, items);
     }
+    /** requires: k > 0; effects: this tariff with every rate, block and item times {@code k}; the base, the
+     * bounds and the multiplier as they are. */
+    public Tariff scaled(double k) {
+        if (!(k > 0) || Double.isInfinite(k)) throw new IllegalArgumentException("k");
+        var b = new LinkedHashMap<String, Rate>();
+        blocks.forEach((id, r) -> b.put(id, new Rate(r.category(), r.value() * k)));
+        var i = new LinkedHashMap<String, Rate>();
+        items.forEach((id, r) -> i.put(id, new Rate(r.category(), r.value() * k)));
+        return new Tariff(base, floor, ceiling, multiplier, perBed * k, perVillager * k, perTradeLevel * k, perJobSite * k,
+                perBell * k, perGolem * k, perFootprint * k, b, i);
+    }
 
-    /** The mod's rates. A job site is a workstation whether or not a villager works it; a block
-     * that is also a job site (a barrel, a brewing stand) counts as both, on purpose. Anything not
-     * named here is worth nothing. */
+    /** What one point of the weights below is worth, in emeralds (D-0005). The weights are D-0001's, in
+     * points; paid a point an emerald, 574 of the 599 villages the server's world had generated came to
+     * the old ceiling of 150 (their median 295 points, the richest 738), so every village cost the same.
+     * At an eighth the median is 50 and only the two richest reach the ceiling of 100. An eighth is exact
+     * in binary, so the weights times it and back again are the weights. */
+    public static final double EMERALDS_PER_POINT = 1.0 / 8;
+
+    /** The mod's rates: D-0001's weights, in points, at {@link #EMERALDS_PER_POINT}; the base and the
+     * floor are 15 emeralds, the ceiling 100. A job site is a workstation whether or not a villager works
+     * it; a block that is also a job site (a barrel, a brewing stand) counts as both, on purpose. Anything
+     * not named here is worth nothing. */
     public static final Tariff STANDARD;
     static {
         var blocks = new LinkedHashMap<String, Rate>();
@@ -51,7 +70,7 @@ public record Tariff(int base, int floor, int ceiling, double multiplier,
         loot(items, "minecraft:copper_ingot", 0.05); loot(items, "minecraft:iron_ingot", 0.1); loot(items, "minecraft:gold_ingot", 0.3);
         loot(items, "minecraft:emerald", 0.5); loot(items, "minecraft:diamond", 1); loot(items, "minecraft:netherite_ingot", 5);
         loot(items, "minecraft:enchanted_book", 2);
-        STANDARD = new Tariff(15, 15, 150, 1.0, 1, 2, 1, 2, 3, 3, 0.5, blocks, items);
+        STANDARD = new Tariff(15, 15, 100, 1.0, 1, 2, 1, 2, 3, 3, 0.5, blocks, items).scaled(EMERALDS_PER_POINT);
     }
     private static void storage(Map<String, Rate> m, String id, double v) { m.put(id, new Rate(Category.STORAGE, v)); }
     private static void crafting(Map<String, Rate> m, String id, double v) { m.put(id, new Rate(Category.CRAFTING, v)); }
