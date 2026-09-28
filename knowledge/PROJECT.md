@@ -104,7 +104,7 @@ warning": restart 01:13:36 UTC at the end of the warning with nobody on, `Done` 
 "(2.0.1 -> 2.1.0)" in the log, 36 baseline errors, 20 TPS, parity clean. The server repo's
 `knowledge/releases/pack-1.67.0.md` has the deployment. Not yet seen in play by Rusty.
 
-## 2.1.1 — prices from 15 to 100 (2026-09-28, local)
+## 2.1.1 — prices from 15 to 100 (2026-09-28, pack 1.67.2)
 
 Rusty: 150 is too much, the best village should cost at most 100 and a basic one 15, and nearly
 every village cost 150. [D-0005](decisions/D-0005.md) surveyed all 599 generated villages on the
@@ -112,4 +112,6 @@ box: 574 were at the ceiling, with a median raw of 295. Each point of D-0001's w
 eighth of an emerald, and the ceiling is 100. The median village costs 50 and only the two
 richest reach 100. The server's own `config/villagedeed-server.toml`, written by 2.0.0 with
 `ceiling = 150`, is edited to 100 on release. The pack's stale 1.0.0 override of it is dropped.
-Clean build: 27 JUnit tests and 9 GameTests. Publication waits on Rusty's go.
+Clean build: 27 JUnit tests and 9 GameTests. Released on Rusty's "Go" and deployed alone in pack
+1.67.2 ([release verification](../devtools/verification/release-2.1.1.md)). Not yet seen: an
+appraisal in play.
