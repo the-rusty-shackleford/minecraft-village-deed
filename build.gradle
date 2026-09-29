@@ -15,6 +15,9 @@ repositories {
 // The Modrinth version id of Thief 1.2.4 for NeoForge 1.21.1, the build the pack ships. Version
 // numbers are shared across loaders there, so the id names the jar, not "1.2.4".
 def thief = 'maven.modrinth:thief:Zhr0tVOO'
+// Lithium 0.15.4, the server's jar by SHA-1 (97212e45): its PalettedContainer.count reports every
+// palette entry, a state no longer in the section with a count of 0 (D-0007).
+def lithium = 'maven.modrinth:lithium:DDUrRVCA'
 sourceSets { domain; gametest }
 def verificationDirectories = [file('run/config'), file('run/booth/config')]
 def boothDirectory = file('run/booth')
@@ -106,6 +109,8 @@ dependencies {
     compileOnly thief
     gametestCompileOnly thief
     gametestRuntimeOnly thief
+    // On the gametest server only, so the census is proven against the counting the server runs.
+    gametestRuntimeOnly lithium
 }
 tasks.named('test', Test) { useJUnitPlatform() }
 jar { from sourceSets.domain.output }

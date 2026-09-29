@@ -8,6 +8,12 @@ only in a worn bag. 12 GameTests (Backpacks+ 0.6.0 and Carried loaded), all gree
 purchase tests failed on 2.1.1. Ships with Carried 1.0.0 and Backpacks+ 0.6.0 as one pack on
 Rusty's go. Not seen in play.
 
+2.2.0 also carries [D-0007](decisions/D-0007.md) (2026-09-29): on the server, `/deed buy`,
+`here` and `appraise` failed with "n" in a Terralith fortified village, because Lithium's block
+count reports a palette entry no longer in a section with a count of 0; the census now skips it.
+Lithium 0.15.4, the server's jar, is on the gametest server, where the new test failed with "n"
+before the fix.
+
 **2.1.0, built, verified and committed 2026-09-27, released 2026-09-28 in pack 1.67.0** (below): one
 trusted list per player for all their villages, on a screen opened by using a deed or by the bare
 `/deed`, open to every player, not only operators ([D-0004](decisions/D-0004.md)). Clean build

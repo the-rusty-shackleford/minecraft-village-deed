@@ -10,3 +10,4 @@ Rationales are append-only. Supersede with a new decision.
 | [D-0004](D-0004.md) | Accepted | One trusted list per owner for all their villages, on a screen opened by using a deed or by the bare `/deed`, open to every player; 2.0.x per-village lists folded in; a required network channel |
 | [D-0005](D-0005.md) | Accepted | An emerald for every eight points and a ceiling of 100: 574 of the 599 villages surveyed had cost the old ceiling of 150 |
 | [D-0006](D-0006.md) | Accepted | A purchase counts and takes everything the player carries through Carried: the offhand and their bags included; change and deed given where the inventory would put them |
+| [D-0007](D-0007.md) | Accepted | The census counts only what is in the village: Lithium reports a palette entry no longer in a section with a count of 0, which failed `/deed buy` with "n" |

@@ -57,7 +57,10 @@ public final class Surveyor {
                 if (index < 0 || index >= chunk.getSectionsCount()) continue;
                 var section = chunk.getSection(index);
                 if (section.hasOnlyAir()) continue;
+                // Lithium's count reports every palette entry, a state no longer in the section
+                // with 0 (D-0007); only what is there counts.
                 section.getStates().count((state, n) -> {
+                    if (n <= 0) return;
                     var id = BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
                     if (pricedBlocks.contains(id)) census.block(id, n);
                 });

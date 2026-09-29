@@ -24,6 +24,7 @@ import net.minecraft.world.Container;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.BarrelBlock;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
@@ -176,6 +177,28 @@ public final class VillageDeedGameTests {
             var appraisal = DeedPurchase.appraise(level, village);
             h.assertTrue(appraisal.equals(Appraisal.of(census, tariff)), "the adapter appraises what the domain appraises");
             h.assertTrue(appraisal.price() == 20, "2 + 6 + 6 + 4 + 3 + 0.5 + 3 + 10 + 6 points, 5.06 emeralds at an eighth, on a base of 15 rounds to 20, got " + appraisal);
+            h.succeed();
+        });
+    }
+    /** Lithium, as the server runs it, counts a section's blocks by its palette and reports an
+     * entry no longer in the section with a count of 0: a barrel opened and closed leaves its open
+     * state behind, a broken chest the chest. The census counts what is there (D-0007). */
+    @GameTest(template = "arena", timeoutTicks = 200) public void aStateNoLongerInTheVillageCountsNothing(GameTestHelper h) {
+        h.assertTrue(net.neoforged.fml.ModList.get().isLoaded("lithium"), "Lithium is loaded, as on the server");
+        var hut = Huts.plant(h);
+        Huts.build(h, hut);
+        var level = h.getLevel();
+        var barrel = hut.at(2, 1, 2);
+        level.setBlock(barrel, Blocks.BARREL.defaultBlockState(), 3);
+        level.setBlock(barrel, Blocks.BARREL.defaultBlockState().setValue(BarrelBlock.OPEN, true), 3);
+        level.setBlock(barrel, Blocks.BARREL.defaultBlockState(), 3);
+        var broken = hut.at(4, 1, 2);
+        chest(h, broken);
+        level.setBlock(broken, Blocks.AIR.defaultBlockState(), 3);
+        h.runAfterDelay(SETTLE, () -> {
+            var village = VillageProviders.at(level, hut.centre()).orElseThrow();
+            var census = Surveyor.census(level, village, DeedPurchase.tariff());
+            h.assertTrue(census.blocks().equals(Map.of("minecraft:barrel", 1)), "the barrel once and no chest: " + census.blocks());
             h.succeed();
         });
     }
