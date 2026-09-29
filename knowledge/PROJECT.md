@@ -1,18 +1,20 @@
 # Village Deed
 
-**2.2.0, built and verified 2026-09-28, unreleased**: a purchase counts and takes everything the
+**2.2.0, released 2026-09-29 and deployed in pack 1.68.0** with Carried and Backpacks+ 0.6.0
+(27 JUnit, 13 GameTests with Lithium loaded, and the booth, green; sha1 `01184ae2` on the server):
+a purchase counts and takes everything the
 player carries, their Backpacks+ bags and the offhand included, through the Carried protocol, and
 gives the change and the deed where the inventory would put them with the bags in it
 ([D-0006](decisions/D-0006.md)). Rusty's case is the first test: a village bought with emeralds
 only in a worn bag. 12 GameTests (Backpacks+ 0.6.0 and Carried loaded), all green; the two new
-purchase tests failed on 2.1.1. Ships with Carried 1.0.0 and Backpacks+ 0.6.0 as one pack on
-Rusty's go. Not seen in play.
+purchase tests failed on 2.1.1. Not seen in play.
 
 2.2.0 also carries [D-0007](decisions/D-0007.md) (2026-09-29): on the server, `/deed buy`,
 `here` and `appraise` failed with "n" in a Terralith fortified village, because Lithium's block
 count reports a palette entry no longer in a section with a count of 0; the census now skips it.
 Lithium 0.15.4, the server's jar, is on the gametest server, where the new test failed with "n"
-before the fix.
+before the fix. Not yet checked on the live server: Rusty was offline at the post-restart check,
+so a purchase in that village is the first thing to watch.
 
 **2.1.0, built, verified and committed 2026-09-27, released 2026-09-28 in pack 1.67.0** (below): one
 trusted list per player for all their villages, on a screen opened by using a deed or by the bare
